@@ -15,13 +15,6 @@ Draws Edit, Write, Bash, PowerShell, Read, Grep and Glob calls in the transcript
 - `/tidy-tools` turns it off and on (off shows Claude Code's own rows)
 - `/tidy-tools bg auto|dark|light|off` sets the card background
 
-## smooth-stream
-
-Model text often arrives in large uneven chunks, so a reply appears in blocks. This mod re-emits each chunk of 8 or more characters as small pieces (3 characters by default) with short pauses between them, so the reply flows in steadily. It pauses for at most 5 s per reply in all, then lets the rest through as it came, and leaves subagents' replies alone.
-
-- `/smooth-stream` turns it off and on
-- `/smooth-stream slow|normal|fast` sets the pace
-
 ## Install
 
 At the prompt of a terminal session:
@@ -29,7 +22,6 @@ At the prompt of a terminal session:
 ```
 /plugin install flex-status --marketplace R00neyj/claude-mods
 /plugin install tidy-tools --marketplace R00neyj/claude-mods
-/plugin install smooth-stream --marketplace R00neyj/claude-mods
 ```
 
 Answer `y` to add the marketplace, then pick the user scope.
@@ -39,7 +31,6 @@ From a shell:
 ```
 claude plugin install flex-status --marketplace R00neyj/claude-mods
 claude plugin install tidy-tools --marketplace R00neyj/claude-mods
-claude plugin install smooth-stream --marketplace R00neyj/claude-mods
 ```
 
 In the desktop app, where `/plugin` does not run: click + next to the prompt box, then Plugins, Add marketplace with `R00neyj/claude-mods`, then Add plugin.

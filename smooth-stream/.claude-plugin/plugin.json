@@ -1,6 +1,0 @@
-{
-  "name": "smooth-stream",
-  "version": "0.1.0",
-  "description": "Splits large streamed text chunks into small paced pieces so replies flow in like a web chat",
-  "types": "./types/index.d.ts"
-}

@@ -13,11 +13,6 @@
       "name": "tidy-tools",
       "source": "./tidy-tools",
       "description": "Compact tool cards in the transcript: what changed, with highlighted code and diffs"
-    },
-    {
-      "name": "smooth-stream",
-      "source": "./smooth-stream",
-      "description": "Splits large streamed text chunks into small paced pieces so replies flow in like a web chat"
     }
   ]
 }
