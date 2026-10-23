@@ -12,6 +12,7 @@ const row = (tool: string, input: unknown, output: unknown, extra: object = {}) 
 function textOf(node: any): string {
   if (typeof node === 'string') return node
   if (!node || typeof node !== 'object') return ''
+  if (node.props?.label) return '[' + node.props.label + ']'
   if (node.props?.source) return '[code:' + (node.props.format ?? 'src') + ']\n' + node.props.source + '\n'
   const kids = node.children ?? node.props?.children ?? []
   return (Array.isArray(kids) ? kids : [kids]).map(textOf).join('')
@@ -73,5 +74,23 @@ test('other tools and the off switch go to the engine', async ($, on) => {
   })
   const ui = await $.ui.mount(row('WebFetch', { url: 'x' }, {}))
   expect((await ui.find({ type: 'Text' }))?.text).toBe('engine')
+  await ui.unmount()
+})
+
+test('the expand button shows every output line, and folds back', async ($, on) => {
+  on('session.cwd', () => ({ value: CWD }))
+  const out = Array.from({ length: 30 }, (_, i) => `line ${i + 1}`).join('\n')
+  const ui = await $.ui.mount(row('Bash', { command: 'seq 30' }, { stdout: out, stderr: '', interrupted: false }))
+  const before = textOf(await ui.drawn())
+  expect(before.includes('line 30')).toBe(true)
+  expect(before.includes('line 5\n') || before.includes('line 5 ')).toBe(false)
+  expect(before.includes('▸ 펼치기')).toBe(true)
+  await ui.press({ key: 'expand' })
+  const after = textOf(await ui.drawn())
+  console.log(after)
+  expect(after.includes('line 1')).toBe(true)
+  expect(after.includes('▾ 접기')).toBe(true)
+  await ui.press({ key: 'expand' })
+  expect(textOf(await ui.drawn()).includes('▸ 펼치기')).toBe(true)
   await ui.unmount()
 })

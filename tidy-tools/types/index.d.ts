@@ -6,6 +6,6 @@ export type BgMode = 'auto' | 'dark' | 'light' | 'off'
 
 declare module 'claude-code' {
   interface PluginState {
-    'tidy-tools': { isOff: boolean; durations: Durations; bgMode: BgMode }
+    'tidy-tools': { isOff: boolean; durations: Durations; bgMode: BgMode; isOpen: StateFamily<boolean> }
   }
 }

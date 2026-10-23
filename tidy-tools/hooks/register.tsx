@@ -3,7 +3,7 @@
 // only what changed inside, code and diffs through the engine's highlighter.
 // Diffs keep the engine's green / red line backgrounds. /tidy-tools toggles it.
 
-import { atom, read, update } from 'claude-code'
+import { atom, memberOf, read, update } from 'claude-code'
 import type { Register } from 'claude-code'
 
 import type { BgMode, Durations } from '../types'
@@ -11,6 +11,8 @@ import type { BgMode, Durations } from '../types'
 const isOff = atom({ plugin: 'tidy-tools', key: 'isOff' } as const, false)
 const durations = atom({ plugin: 'tidy-tools', key: 'durations' } as const, {} as Durations)
 const bgMode = atom({ plugin: 'tidy-tools', key: 'bgMode' } as const, 'auto' as BgMode)
+// Per card (keyed by tool_use_id): whether its expand button lifts the line limits
+const isOpen = atom({ plugin: 'tidy-tools', key: 'isOpen' } as const, false)
 
 // omp's card backgrounds (theme/dark.json, theme/light.json): pending, success, error
 const BG = {
@@ -168,7 +170,7 @@ export const register: Register = on => {
   on('ui.render', { component: 'ToolUse' }, async ($, e, next) => {
     if (e.surface !== 'terminal' || !TOOLS.includes(e.props.tool) || (await read($, isOff))) return next(e)
 
-    const { Box, Text, Code } = $.ui.resolve(e)
+    const { Box, Text, Code, Button } = $.ui.resolve(e)
     const p = e.props
     const input = (p.input ?? {}) as Record<string, unknown>
     const out = p.output as any
@@ -179,6 +181,10 @@ export const register: Register = on => {
     const palette = mode === 'off' ? null : BG[mode === 'light' || (mode === 'auto' && isLightTheme) ? 'light' : 'dark']
     const bg = palette && (state === 'ok' ? palette.ok : state === 'running' ? palette.pending : palette.error)
     const errLines = state === 'error' && typeof out === 'string' ? lines(out) : []
+    // The card's own expand state; the engine's isExpanded is true for every row under verbose
+    const open = memberOf(isOpen, e)
+    const isOpened = await read($, open)
+    const lim = (n: number) => (isOpened ? Infinity : n)
     // Transcript rows sit indented; leave room for it
     const width = Math.max(30, (e.viewport?.columns ?? 100) - 4)
 
@@ -232,7 +238,14 @@ export const register: Register = on => {
         {status}
       </Text>
     )
-    const errorBody = errLines.slice(-OUTPUT_LINES).map(l => (
+    // Shown when the card hides something, or is open; a press flips this card alone
+    const toggle = (hasMore: boolean) =>
+      (hasMore || isOpened) && (
+        <Box justifyContent="flex-end">
+          <Button key="expand" plain dimColor label={isOpened ? '▾ 접기' : '▸ 펼치기'} onPress={() => update($, open, v => !v)} />
+        </Box>
+      )
+    const errorBody = errLines.slice(-lim(OUTPUT_LINES)).map(l => (
       <Text color="error" wrap="truncate-end">
         {l}
       </Text>
@@ -252,7 +265,7 @@ export const register: Register = on => {
             ? out.structuredPatch
             : []
         const { add, del } = counts(hunks)
-        const diff = isNew ? diffSource(hunks, WRITE_LINES, 1) : diffSource(hunks, DIFF_LINES, DIFF_HUNKS)
+        const diff = isNew ? diffSource(hunks, lim(WRITE_LINES), 1) : diffSource(hunks, lim(DIFF_LINES), lim(DIFF_HUNKS))
         const stat = hunks.length ? (
           <Text>
             {'  '}
@@ -273,6 +286,7 @@ export const register: Register = on => {
             {more && muted(more)}
             {errorBody}
             {!diff.source && !errorBody.length && muted(state === 'running' ? '…' : '(변경 없음)')}
+            {toggle(Boolean(more) || errLines.length > OUTPUT_LINES)}
           </Box>,
         )
       }
@@ -280,10 +294,10 @@ export const register: Register = on => {
       case 'Bash':
       case 'PowerShell': {
         const cmd = lines(str(input.command))
-        const shown = cmd.slice(-OUTPUT_LINES)
+        const shown = cmd.slice(-lim(OUTPUT_LINES))
         const text = out && typeof out === 'object' ? [str(out.stdout), str(out.stderr)].filter(Boolean).join('\n') : ''
         const outLines = state === 'error' ? errLines : lines(text)
-        const tail = outLines.slice(-OUTPUT_LINES)
+        const tail = outLines.slice(-lim(OUTPUT_LINES))
         const exit = state === 'error' ? (errLines[0]?.match(/^Exit code (\d+)/)?.[1] ?? '') : ''
         const facts = [wall(ms), exit && `Exit: ${exit}`].filter(Boolean) as string[]
         const desc = str(input.description)
@@ -301,6 +315,7 @@ export const register: Register = on => {
                 {l}
               </Text>
             ))}
+            {toggle(cmd.length > shown.length || outLines.length > tail.length)}
           </Box>,
         )
       }
@@ -313,7 +328,7 @@ export const register: Register = on => {
         const range = isText && f.numLines < f.totalLines ? `:${f.startLine}-${f.startLine + f.numLines - 1}` : ''
         if (state === 'running') return heading(G.read, 'Read', rel)
         const code = isText ? lines(str(f.content)) : []
-        const shown = code.slice(0, READ_LINES)
+        const shown = code.slice(0, lim(READ_LINES))
         const kind = out?.type && out.type !== 'text' ? ` (${out.type})` : ''
         return frame(
           heading(G.read, 'Read', rel + range, kind ? <Text color={MUTED}>{kind}</Text> : undefined),
@@ -323,6 +338,7 @@ export const register: Register = on => {
             {code.length > shown.length && muted(`   … ${plural(code.length - shown.length, 'more line')}`)}
             {errorBody}
             {!shown.length && !errorBody.length && muted(isText ? '(빈 파일)' : '(텍스트 아님)')}
+            {toggle(code.length > shown.length)}
           </Box>,
         )
       }
@@ -348,7 +364,7 @@ export const register: Register = on => {
         }
         if (where) meta.push(where)
         const isEmpty = done && items.length === 0 && !(out.numFiles > 0) && !(out.numLines > 0)
-        const limit = isGrep ? GREP_LINES : GLOB_ITEMS
+        const limit = lim(isGrep ? GREP_LINES : GLOB_ITEMS)
         const shown = items.slice(0, limit)
         const hidden = items.length - shown.length
         const extra = (
@@ -379,6 +395,7 @@ export const register: Register = on => {
                 {l}
               </Text>
             ))}
+            {toggle(hidden > 0)}
           </Box>
         )
       }

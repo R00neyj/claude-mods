@@ -13,6 +13,7 @@ Turn off any `statusLine` in `~/.claude/settings.json` so the two do not show at
 Draws Edit, Write, Bash, PowerShell, Read, Grep and Glob calls in the transcript as compact cards, in a layout borrowed from [oh-my-pi](https://github.com/can1357/oh-my-pi): a rounded frame with the title on its top border and facts (wall time, exit code) on its bottom one. Edits and new files show only the changed lines as the engine's highlighted diff, commands show the last 10 output lines, reads show the first 12 lines with line numbers, and searches show a short tree.
 
 - `/tidy-tools` turns it off and on (off shows Claude Code's own rows)
+- `▸ 펼치기` under a card that hides lines shows them all; `▾ 접기` folds it back
 - `/tidy-tools bg auto|dark|light|off` sets the card background
 
 ## Install
