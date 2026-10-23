@@ -1,6 +1,6 @@
 {
   "name": "flex-status",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Responsive status band above the prompt: folds onto more rows instead of cutting info when the terminal narrows",
   "types": "./types/index.d.ts"
 }

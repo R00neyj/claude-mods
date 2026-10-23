@@ -9,8 +9,8 @@ import type { Git, Limit, Snap } from '../types'
 
 const snap = atom({ plugin: 'flex-status', key: 'snap' } as const, null, { shape: 'snap-1' })
 
-// xterm-256 codes of the old script, as hex so every surface reads them
-const ACCENT = '#af5fff' // 135
+// xterm-256 codes of the old script as hex; the accent follows the theme
+const ACCENT = 'claude' // the theme's Claude orange
 const DIM = '#808080' // 244
 const TEXT = '#a8a8a8' // 248
 const BRANCH = '#d78700' // 172
