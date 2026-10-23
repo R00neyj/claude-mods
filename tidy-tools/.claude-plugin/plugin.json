@@ -1,0 +1,6 @@
+{
+  "name": "tidy-tools",
+  "version": "0.1.0",
+  "description": "Compact tool rows in the transcript: what changed, with syntax-highlighted code and diffs",
+  "types": "./types/index.d.ts"
+}

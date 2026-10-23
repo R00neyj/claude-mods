@@ -1,11 +1,18 @@
 {
   "name": "claude-mods",
-  "owner": { "name": "R00neyj" },
+  "owner": {
+    "name": "R00neyj"
+  },
   "plugins": [
     {
       "name": "flex-status",
       "source": "./flex-status",
       "description": "Responsive status band above the prompt: folds onto more rows instead of cutting info when the terminal narrows"
+    },
+    {
+      "name": "tidy-tools",
+      "source": "./tidy-tools",
+      "description": "Compact tool cards in the transcript: what changed, with highlighted code and diffs"
     }
   ]
 }
