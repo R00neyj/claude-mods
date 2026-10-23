@@ -1,0 +1,6 @@
+{
+  "name": "typewriter",
+  "version": "0.1.0",
+  "description": "Reveals each new reply block a few characters at a time, the newest ones fading in",
+  "types": "./types/index.d.ts"
+}

@@ -13,6 +13,11 @@
       "name": "tidy-tools",
       "source": "./tidy-tools",
       "description": "Compact tool cards in the transcript: what changed, with highlighted code and diffs"
+    },
+    {
+      "name": "typewriter",
+      "source": "./typewriter",
+      "description": "Reveals each new reply block a few characters at a time, the newest ones fading in"
     }
   ]
 }

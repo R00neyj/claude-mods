@@ -16,6 +16,13 @@ Draws Edit, Write, Bash, PowerShell, Read, Grep and Glob calls in the transcript
 - `▸ 펼치기` under a card that hides lines shows them all; `▾ 접기` folds it back
 - `/tidy-tools bg auto|dark|light|off` sets the card background
 
+## typewriter
+
+The terminal draws a streamed reply in batches of whole lines, so text lands in blocks. This mod draws each new reply block a few characters at a time instead: every 50 ms the block shows a little more, catching up faster when it falls behind. The line being typed is drawn with its newest 12 characters in a gray ramp, so the text fades in. Replies already on screen (history, a resume, a scroll) show whole at once; only the drawing changes, never the stored message.
+
+- `/typewriter` turns it off and on
+- The first line of a block, and lines inside a code fence, type out without the fade
+
 ## Install
 
 At the prompt of a terminal session:
@@ -23,6 +30,7 @@ At the prompt of a terminal session:
 ```
 /plugin install flex-status --marketplace R00neyj/claude-mods
 /plugin install tidy-tools --marketplace R00neyj/claude-mods
+/plugin install typewriter --marketplace R00neyj/claude-mods
 ```
 
 Answer `y` to add the marketplace, then pick the user scope.
@@ -32,6 +40,7 @@ From a shell:
 ```
 claude plugin install flex-status --marketplace R00neyj/claude-mods
 claude plugin install tidy-tools --marketplace R00neyj/claude-mods
+claude plugin install typewriter --marketplace R00neyj/claude-mods
 ```
 
 In the desktop app, where `/plugin` does not run: click + next to the prompt box, then Plugins, Add marketplace with `R00neyj/claude-mods`, then Add plugin.
