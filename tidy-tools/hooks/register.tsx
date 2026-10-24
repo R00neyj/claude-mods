@@ -311,7 +311,7 @@ export const register: Register = on => {
             {outLines.length > tail.length &&
               muted(`… (${plural(outLines.length - tail.length, 'earlier line')}, showing ${tail.length} of ${outLines.length})`)}
             {tail.map(l => (
-              <Text color={state === 'error' ? 'error' : MUTED} wrap="truncate-end">
+              <Text color={state === 'error' ? 'error' : undefined} wrap="truncate-end">
                 {l}
               </Text>
             ))}
