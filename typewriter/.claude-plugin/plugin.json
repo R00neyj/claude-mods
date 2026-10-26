@@ -1,6 +1,6 @@
 {
   "name": "typewriter",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Types each new reply block out at 30 frames a second, the way oh-my-pi streams text",
   "types": "./types/index.d.ts"
 }

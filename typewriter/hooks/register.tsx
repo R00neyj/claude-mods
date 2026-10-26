@@ -1,30 +1,26 @@
-// typewriter: the terminal draws a streamed reply in batches of whole lines, so text
-// lands in blocks. This types each new reply block out a few characters a frame
-// instead: the AssistantMessage hook draws a Client in the block's place, and
-// reveal.tsx types the text out on the terminal's frame clock (the stored message is
-// untouched). As oh-my-pi does, a tool call or the end of the turn shows what is still
-// typing whole at once: the engine draws those blocks again from then on. Blocks drawn
-// outside a live turn (history, a resume, a scroll) show whole at once.
+// typewriter: the terminal draws a reply in batches of whole lines, so text lands in
+// blocks. This types each new reply block out a few characters a frame instead: the
+// AssistantMessage hook draws a Client in the block's place, and reveal.tsx types the
+// text out on the terminal's frame clock (the stored message is untouched). A block
+// often lands as its turn ends, so it still types out then; once it has caught up and
+// the turn is over, the engine draws it again. Blocks drawn outside a live turn
+// (history, a resume, a scroll) show whole at once.
 
-import { atom, read, update } from 'claude-code'
-import type { Hook, Register } from 'claude-code'
+import { read, update, atom } from 'claude-code'
+import type { Register } from 'claude-code'
 
 const isOff = atom({ plugin: 'typewriter', key: 'isOff' } as const, false)
 
-type Api = Parameters<Hook<'turn.complete'>>[0]
+// A block that lands this long after its turn ended still types out
+const AFTER_TURN_MS = 2000
 
 // Module variables start over on a reload: blocks typing then show whole on their next draw
 let isLive = false
+let liveUntil = 0
 const typing = new Set<string>()
 const finished = new Set<string>()
-
-// Every block still typing shows whole: the redraw hands each back to the engine
-function showWhole($: Api) {
-  if (typing.size === 0) return
-  for (const id of typing) finished.add(id)
-  typing.clear()
-  $.ui.invalidate('ui.render')
-}
+// Per block typing: the text length reveal.tsx last caught up to
+const caughtUp = new Map<string, number>()
 
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
@@ -48,17 +44,20 @@ export const register: Register = on => {
   on('turn.complete', async ($, e, next) => {
     if (e.agentId === undefined) {
       isLive = false
-      showWhole($)
+      liveUntil = (await $.clock.now()) + AFTER_TURN_MS
+      // Blocks that caught up before the turn was over go back to the engine then
+      $.clock.after(AFTER_TURN_MS + 100, () => $.ui.invalidate('ui.render'))
     }
     return next(e)
   })
 
-  // The text before a tool call shows whole the moment the call comes; the call itself
-  // goes on whatever happens here
-  on('tool.call', async ($, e, next) => {
-    try {
-      if (e.agentId === undefined) showWhole($)
-    } catch {}
+  // reveal.tsx caught up; once the turn is over the redraw hands the block to the engine
+  on('ui.message', async ($, e, next) => {
+    const length = (e.data as { caughtUp?: unknown } | null)?.caughtUp
+    if (typeof length === 'number' && typing.has(e.requestId)) {
+      caughtUp.set(e.requestId, length)
+      if (!isLive && (await $.clock.now()) > liveUntil) $.ui.invalidate('ui.render')
+    }
     return next(e)
   })
 
@@ -67,13 +66,21 @@ export const register: Register = on => {
     if (e.surface !== 'terminal' || e.props.isSummary || finished.has(e.requestId) || (await read($, isOff))) {
       return next(e)
     }
+
+    const isOver = async () => !isLive && (await $.clock.now()) > liveUntil
     if (!typing.has(e.requestId)) {
-      // Only a block first drawn during a live turn types out
-      if (!isLive) {
+      // Only a block first drawn during a live turn, or just after it, types out
+      if (await isOver()) {
         finished.add(e.requestId)
         return next(e)
       }
       typing.add(e.requestId)
+    }
+    if ((caughtUp.get(e.requestId) ?? -1) >= e.props.text.length && (await isOver())) {
+      typing.delete(e.requestId)
+      caughtUp.delete(e.requestId)
+      finished.add(e.requestId)
+      return next(e)
     }
 
     const { Client } = $.ui.resolve(e)

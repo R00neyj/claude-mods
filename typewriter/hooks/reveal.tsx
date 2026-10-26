@@ -1,14 +1,15 @@
 // typewriter's surface module: types a reply block out on the terminal's own frame
 // clock, with no trip through the hooks module per frame. Each frame draws the prefix
-// typed so far as markdown, as oh-my-pi's streaming reveal does.
+// typed so far as markdown, as oh-my-pi's streaming reveal does; once it has caught up
+// it tells the hooks module, which hands the block back to the engine.
 
 import type { ClientModule } from 'claude-code'
 
 // text: the block's text so far; bullet: the block opens the reply
 type Props = { text: string; bullet: boolean }
-// shown: graphemes typed; latest holds the props the frame clock reads, since its
-// callback outlives the call that set it
-type State = { shown: number; latest: { props: Props } }
+// shown: graphemes typed; posted: the text length last told caught up; latest holds the
+// props the frame clock reads, since its callback outlives the call that set it
+type State = { shown: number; posted: number; latest: { props: Props } }
 
 // oh-my-pi's numbers: 30 frames a second, at least MIN_STEP graphemes a frame, and a
 // backlog shrinks by a CATCHUP_FRAMES-th each frame, so it clears in about a quarter second
@@ -43,7 +44,7 @@ function closeOpen(text: string): string {
 
 const Reveal: ClientModule<Props, State> = (props, surface) => {
   const { Box, Text, Markdown } = surface.elements
-  const state = surface.state ?? { shown: 0, latest: { props } }
+  const state = surface.state ?? { shown: 0, posted: -1, latest: { props } }
   state.latest.props = props
 
   if (surface.state === undefined) {
@@ -51,9 +52,17 @@ const Reveal: ClientModule<Props, State> = (props, surface) => {
     surface.every(FRAME_MS, () => {
       const s = surface.state
       if (!s) return
-      const total = graphemes(s.latest.props.text).length
+      const { text } = s.latest.props
+      const total = graphemes(text).length
       const backlog = total - s.shown
-      if (backlog <= 0) return
+      if (backlog <= 0) {
+        // Caught up: told once per length, in UTF-16 units as the hooks module counts
+        if (s.posted !== text.length) {
+          surface.setState({ ...s, posted: text.length })
+          surface.post({ caughtUp: text.length })
+        }
+        return
+      }
       surface.setState({ ...s, shown: Math.min(total, s.shown + Math.max(MIN_STEP, Math.ceil(backlog / CATCHUP_FRAMES))) })
     })
   }

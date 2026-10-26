@@ -11,15 +11,20 @@ const block = (requestId: string) =>
     props: { text: TEXT, isFirstOfReply: true },
   }) as const
 
-// Stands for the engine: echoes the text it was handed, and answers the turn and tools
+// The engine's clock, in milliseconds
+let now = 0
+
+// Stands for the engine: echoes the text it was handed, and answers the turn and clock
 function engine(on: any) {
+  now = 0
   on('ui.render', ($: any, e: any) => {
     const { Text } = $.ui.resolve(e)
     return h(Text, null, e.props.text)
   })
   on('turn.start', (_: any, e: any) => ({ turnId: e.turnId }))
   on('turn.complete', () => ({ text: '' }))
-  on('tool.call', () => ({ result: { text: 'ok' } }))
+  on('clock.now', () => ({ value: now }))
+  on('clock.after', () => ({ value: undefined }))
 }
 
 const typed = async (ui: any) => (await ui.find({ type: 'Markdown', in: 'reveal' }))?.text
@@ -27,6 +32,7 @@ const engineText = async (ui: any) => (await ui.find({ type: 'Text' }))?.text
 
 test('a block outside a live turn shows whole', async ($, on) => {
   engine(on)
+  now = 10_000
   const ui = await $.ui.mount(block('m1'))
   expect(await engineText(ui)).toBe(TEXT)
   await ui.unmount()
@@ -47,20 +53,29 @@ test('a block drawn during a turn types out on the frame clock', async ($, on) =
   await ui.unmount()
 })
 
-test('the end of the turn shows a typing block whole', async ($, on) => {
+test('a block landing just as its turn ends still types out', async ($, on) => {
   engine(on)
   await $.turn.start({ text: 'hi', turnId: 't3' })
-  const ui = await $.ui.mount(block('m3'))
   await $.turn.complete({ turnId: 't3', reason: 'answer' } as any)
-  expect(await engineText(ui)).toBe(TEXT)
+  now = 500
+  const ui = await $.ui.mount(block('m3'))
+  expect(await engineText(ui)).toBeUndefined()
+  await ui.advance(34)
+  expect(await typed(ui)).toBe('First pa')
   await ui.unmount()
 })
 
-test('a tool call shows the text before it whole', async ($, on) => {
+test('a caught-up block goes back to the engine once the turn is over', async ($, on) => {
   engine(on)
   await $.turn.start({ text: 'hi', turnId: 't4' })
+  const typing = await $.ui.mount(block('m4'))
+  // Typed out to the end, which reveal.tsx reports
+  await typing.advance(2000)
+  await typing.unmount()
+  await $.turn.complete({ turnId: 't4', reason: 'answer' } as any)
+  now = 10_000
+  // Drawn again (a scroll back to it): the engine's drawing, not typed out again
   const ui = await $.ui.mount(block('m4'))
-  await $.tool.call({ tool: 'Bash', command: 'ls' } as any)
   expect(await engineText(ui)).toBe(TEXT)
   await ui.unmount()
 })
