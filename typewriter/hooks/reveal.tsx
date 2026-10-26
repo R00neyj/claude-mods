@@ -7,15 +7,19 @@ import type { ClientModule } from 'claude-code'
 
 // text: the block's text so far; bullet: the block opens the reply
 type Props = { text: string; bullet: boolean }
-// shown: graphemes typed; posted: the text length last told caught up; latest holds the
-// props the frame clock reads, since its callback outlives the call that set it
-type State = { shown: number; posted: number; latest: { props: Props } }
+// shown: graphemes typed; step: graphemes a frame, set when the text last grew (at
+// total graphemes); posted: the text length last told caught up; latest holds the props
+// the frame clock reads, since its callback outlives the call that set it
+type State = { shown: number; step: number; total: number; posted: number; latest: { props: Props } }
 
-// oh-my-pi's numbers: 30 frames a second, at least MIN_STEP graphemes a frame, and a
-// backlog shrinks by a CATCHUP_FRAMES-th each frame, so it clears in about a quarter second
-const FRAME_MS = 1000 / 30
-const MIN_STEP = 3
-const CATCHUP_FRAMES = 8
+// An even pace, as a typewriter keeps: when the text grows, the step is set so the
+// backlog types out over about TARGET_FRAMES frames, at least MIN_STEP a frame, and held
+// until the text grows again. oh-my-pi shrinks the backlog by an eighth each frame
+// instead, which suits text that streams in a little at a time; a block here lands
+// whole, and shrinking it that way shows most of it at once and types only the tail.
+const FRAME_MS = 1000 / 60
+const MIN_STEP = 1
+const TARGET_FRAMES = 90
 // Reply text sits two cells in, past the bullet column, on every block of a reply
 const BULLET = '● '
 const GUTTER = '  '
@@ -44,7 +48,7 @@ function closeOpen(text: string): string {
 
 const Reveal: ClientModule<Props, State> = (props, surface) => {
   const { Box, Text, Markdown } = surface.elements
-  const state = surface.state ?? { shown: 0, posted: -1, latest: { props } }
+  const state = surface.state ?? { shown: 0, step: MIN_STEP, total: 0, posted: -1, latest: { props } }
   state.latest.props = props
 
   if (surface.state === undefined) {
@@ -63,7 +67,8 @@ const Reveal: ClientModule<Props, State> = (props, surface) => {
         }
         return
       }
-      surface.setState({ ...s, shown: Math.min(total, s.shown + Math.max(MIN_STEP, Math.ceil(backlog / CATCHUP_FRAMES))) })
+      const step = total === s.total ? s.step : Math.max(MIN_STEP, Math.ceil(backlog / TARGET_FRAMES))
+      surface.setState({ ...s, step, total, shown: Math.min(total, s.shown + step) })
     })
   }
 

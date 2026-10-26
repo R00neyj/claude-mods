@@ -44,10 +44,10 @@ test('a block drawn during a turn types out on the frame clock', async ($, on) =
   const ui = await $.ui.mount(block('m2'))
   expect(await engineText(ui)).toBeUndefined()
   expect(await typed(ui)).toBe('')
-  // One frame: a backlog of 61 types ceil(61 / 8) = 8
+  // Two frames at 60 a second: a backlog of 61 under 90 frames types one a frame
   await ui.advance(34)
-  expect(await typed(ui)).toBe('First pa')
-  // Long enough to catch up: the whole text, markdown and all
+  expect(await typed(ui)).toBe('Fi')
+  // Long enough to catch up (61 frames): the whole text, markdown and all
   await ui.advance(2000)
   expect(await typed(ui)).toBe(TEXT)
   await ui.unmount()
@@ -61,7 +61,7 @@ test('a block landing just as its turn ends still types out', async ($, on) => {
   const ui = await $.ui.mount(block('m3'))
   expect(await engineText(ui)).toBeUndefined()
   await ui.advance(34)
-  expect(await typed(ui)).toBe('First pa')
+  expect(await typed(ui)).toBe('Fi')
   await ui.unmount()
 })
 
