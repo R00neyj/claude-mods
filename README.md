@@ -18,10 +18,9 @@ Draws Edit, Write, Bash, PowerShell, Read, Grep and Glob calls in the transcript
 
 ## typewriter
 
-The terminal draws a streamed reply in batches of whole lines, so text lands in blocks. This mod draws each new reply block a few characters at a time instead: every 50 ms the block shows a little more, catching up faster when it falls behind. The line being typed is drawn with its newest 12 characters in a gray ramp, so the text fades in. Replies already on screen (history, a resume, a scroll) show whole at once; only the drawing changes, never the stored message.
+The terminal draws a streamed reply in batches of whole lines, so text lands in blocks. This mod types each new reply block out instead, the way [oh-my-pi](https://github.com/can1357/oh-my-pi)'s smooth streaming does: 30 frames a second, at least 3 characters a frame, and a backlog that shrinks by an eighth each frame so it clears in about a quarter second. Each frame draws the text typed so far as markdown. The typing runs in the terminal's own drawing (a `Client`), not in the hooks module, so frames are not held to the transcript's redraw rate. As in oh-my-pi, a tool call shows the text before it whole at once, and so does the end of the turn; from then on Claude Code draws those blocks as usual. Replies already on screen (history, a resume, a scroll) show whole at once; only the drawing changes, never the stored message.
 
 - `/typewriter` turns it off and on
-- The first line of a block, and lines inside a code fence, type out without the fade
 
 ## Install
 

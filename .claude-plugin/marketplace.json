@@ -17,7 +17,7 @@
     {
       "name": "typewriter",
       "source": "./typewriter",
-      "description": "Reveals each new reply block a few characters at a time, the newest ones fading in"
+      "description": "Types each new reply block out at 30 frames a second, the way oh-my-pi streams text"
     }
   ]
 }
