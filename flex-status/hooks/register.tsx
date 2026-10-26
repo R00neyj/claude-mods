@@ -74,8 +74,9 @@ function leftGroups(s: Snap): Chip[][] {
   return groups
 }
 
+// The branch is green on a clean working tree, orange once anything is changed or untracked
 function gitChip(g: Git): Chip {
-  const chip: Chip = [{ t: `⑂ ${g.branch}`, c: BRANCH }]
+  const chip: Chip = [{ t: `⑂ ${g.branch}`, c: g.untracked || g.changed ? BRANCH : OK }]
   if (g.untracked) chip.push({ t: ` ?${g.untracked}`, c: DIM })
   if (g.changed) chip.push({ t: ` !${g.changed}`, c: WARN })
   return chip
