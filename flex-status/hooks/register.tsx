@@ -6,8 +6,10 @@ import { atom, read, update } from 'claude-code'
 import type { Hook, Register } from 'claude-code'
 
 import type { Git, Limit, Snap } from '../types'
+import { parseConfig } from './config'
+import type { Config, SegConf, SegId } from './config'
 
-const snap = atom({ plugin: 'flex-status', key: 'snap' } as const, null, { shape: 'snap-1' })
+const snap = atom({ plugin: 'flex-status', key: 'snap' } as const, null, { shape: 'snap-2' })
 
 // xterm-256 codes of the old script as hex; the accent follows the theme
 const ACCENT = 'claude' // the theme's Claude orange
@@ -63,28 +65,29 @@ function prettyModel(id: string): string {
 
 const tokens = (n: number) => (n >= 1e6 ? `${+(n / 1e6).toFixed(1)}M` : `${Math.round(n / 1000)}K`)
 
-// ── chips ────────────────────────────────────────────────────────────────
+// ── segments ─────────────────────────────────────────────────────────────
 
-function leftGroups(s: Snap): Chip[][] {
-  const id: Chip[] = [[{ t: `⬢ ${s.model}`, c: ACCENT }]]
-  if (s.effort) id.push([{ t: `◑ ${s.effort}`, c: ACCENT }])
-  if (s.account) id.push([{ t: s.account, c: DIM }])
-  const groups: Chip[][] = [id, [[{ t: `📁 .../${s.folder}`, c: TEXT }]]]
-  if (s.git) groups.push([gitChip(s.git)])
-  return groups
+type Seg = (s: Snap, c: SegConf) => Chip | null
+
+const label = (c: SegConf, icon: string, text: string) => {
+  const i = c.icon ?? icon
+  return i ? `${i} ${text}` : text
 }
+// A configured color replaces the head span's own
+const tint = (chip: Chip, c: SegConf): Chip => (c.color ? chip.map((sp, i) => (i === 0 ? { ...sp, c: c.color } : sp)) : chip)
 
 // The branch is green on a clean working tree, orange once anything is changed or untracked
-function gitChip(g: Git): Chip {
-  const chip: Chip = [{ t: `⑂ ${g.branch}`, c: g.untracked || g.changed ? BRANCH : OK }]
+function gitChip(g: Git, c: SegConf): Chip {
+  const chip: Chip = [{ t: label(c, '⑂', g.branch), c: g.untracked || g.changed ? BRANCH : OK }]
+  if (c.counts === false) return chip
   if (g.untracked) chip.push({ t: ` ?${g.untracked}`, c: DIM })
   if (g.changed) chip.push({ t: ` !${g.changed}`, c: WARN })
   return chip
 }
 
-function limitChip(l: Limit): Chip {
-  const chip: Chip = [{ t: `${l.label} ${Math.round(l.pct)}%`, c: tierColor(l.pct) }]
-  if (l.resetsAt) {
+function limitChip(l: Limit, c: SegConf): Chip {
+  const chip: Chip = [{ t: label(c, '', `${l.label} ${Math.round(l.pct)}%`), c: tierColor(l.pct) }]
+  if (l.resetsAt && c.reset !== false) {
     const d = new Date(l.resetsAt)
     if (!Number.isNaN(d.getTime())) {
       chip.push({ t: ` (${l.withDate ? `${d.getMonth() + 1}/${d.getDate()} ` : ''}${hhmm(d)})`, c: DIM })
@@ -93,30 +96,57 @@ function limitChip(l: Limit): Chip {
   return chip
 }
 
-function rightGroups(s: Snap): Chip[][] {
-  const limits: Chip[] = []
-  if (s.cacheExpiresAt) {
-    const left = Math.floor((s.cacheExpiresAt - s.now) / 1000)
-    limits.push(
-      left <= 0
-        ? [{ t: '⏳ 만료', c: BAD }]
-        : [{ t: `⏳ ${pad2(Math.floor(left / 60))}:${pad2(left % 60)}`, c: left < 60 ? WARN : ACCENT }],
-    )
-  }
-  for (const l of s.limits) limits.push(limitChip(l))
+const limitSeg = (id: '5h' | '7d'): Seg => (s, c) => {
+  const l = s.limits.find(x => x.label === id)
+  return l ? tint(limitChip(l, c), c) : null
+}
 
-  const groups: Chip[][] = []
-  if (limits.length) groups.push(limits)
-  if (s.cacheHit !== undefined) {
+function clockText(d: Date, c: SegConf): string {
+  const h = c.hour12 ? d.getHours() % 12 || 12 : d.getHours()
+  const hh = c.hour12 ? String(h) : pad2(h)
+  const mm = `${hh}:${pad2(d.getMinutes())}${c.seconds ? `:${pad2(d.getSeconds())}` : ''}`
+  return c.hour12 ? `${mm} ${d.getHours() < 12 ? 'AM' : 'PM'}` : mm
+}
+
+const SEGMENTS: Record<SegId, Seg> = {
+  model: (s, c) => tint([{ t: label(c, '⬢', s.model), c: ACCENT }], c),
+  effort: (s, c) => (s.effort ? tint([{ t: label(c, '◑', s.effort), c: ACCENT }], c) : null),
+  account: (s, c) => (s.account ? tint([{ t: label(c, '', s.account), c: DIM }], c) : null),
+  folder: (s, c) => {
+    const tail = s.cwd.split(/[\\/]+/).filter(Boolean).slice(-Math.max(1, c.depth ?? 1)).join('/')
+    return tint([{ t: label(c, '📁', `.../${tail || s.folder}`), c: TEXT }], c)
+  },
+  git: (s, c) => (s.git ? tint(gitChip(s.git, c), c) : null),
+  ttl: (s, c) => {
+    if (!s.cacheExpiresAt) return null
+    const left = Math.floor((s.cacheExpiresAt - s.now) / 1000)
+    return tint(
+      left <= 0
+        ? [{ t: label(c, '⏳', '만료'), c: BAD }]
+        : [{ t: label(c, '⏳', `${pad2(Math.floor(left / 60))}:${pad2(left % 60)}`), c: left < 60 ? WARN : ACCENT }],
+      c,
+    )
+  },
+  '5h': limitSeg('5h'),
+  '7d': limitSeg('7d'),
+  cache: (s, c) => {
+    if (s.cacheHit === undefined) return null
     const pct = s.cacheHit * 100
-    groups.push([[{ t: `💾 ${pct.toFixed(2)}%`, c: pct >= 80 ? OK : pct >= 50 ? '#d7af00' : BAD }]])
-  }
-  const sec = Math.max(0, Math.floor((s.now - s.startedAt) / 1000))
-  const h = Math.floor(sec / 3600)
-  const m = Math.floor((sec % 3600) / 60)
-  groups.push([[{ t: `⏱ ${h ? `${h}h${pad2(m)}m` : `${m}m${pad2(sec % 60)}s`}`, c: TEXT }]])
-  groups.push([[{ t: `🕐 ${hhmm(new Date(s.now))}`, c: TEXT }]])
-  return groups
+    return tint([{ t: label(c, '💾', `${pct.toFixed(c.decimals ?? 2)}%`), c: pct >= 80 ? OK : pct >= 50 ? '#d7af00' : BAD }], c)
+  },
+  session: (s, c) => {
+    const sec = Math.max(0, Math.floor((s.now - s.startedAt) / 1000))
+    const h = Math.floor(sec / 3600)
+    const m = Math.floor((sec % 3600) / 60)
+    return tint([{ t: label(c, '⏱', h ? `${h}h${pad2(m)}m` : `${m}m${pad2(sec % 60)}s`), c: TEXT }], c)
+  },
+  clock: (s, c) => tint([{ t: label(c, '🕐', clockText(new Date(s.now), c)), c: TEXT }], c),
+}
+
+function groupsOf(ids: SegId[][], s: Snap, cfg: Config): Chip[][] {
+  return ids
+    .map(group => group.map(id => SEGMENTS[id](s, cfg.seg[id] ?? {})).filter((chip): chip is Chip => chip !== null))
+    .filter(group => group.length > 0)
 }
 
 // Bar runs 0 → auto-compact point (falls back to the full window), so 100% = compaction fires
@@ -173,14 +203,14 @@ function pack(items: Item[], cols: number): Span[][] {
   return rows.map(toSpans)
 }
 
-export function layout(s: Snap, cols: number): Span[][] {
-  const left = flatten(leftGroups(s), ' · ', ' > ')
-  const right = flatten(rightGroups(s), ' · ', ' < ')
+export function layout(s: Snap, cols: number, cfg: Config): Span[][] {
+  const left = flatten(groupsOf(cfg.left, s, cfg), cfg.sep.inner, cfg.sep.left)
+  const right = flatten(groupsOf(cfg.right, s, cfg), cfg.sep.inner, cfg.sep.right)
   const L = toSpans(left)
   const R = toSpans(right)
   const lw = spansWidth(L)
   const rw = spansWidth(R)
-  const hasBar = s.ctxTokens !== undefined
+  const hasBar = cfg.bar && s.ctxTokens !== undefined
 
   // 1 row: left ─bar─ right
   if (!hasBar && lw + 1 + rw <= cols) return [[...L, { t: ' '.repeat(cols - lw - rw) }, ...R]]
@@ -274,11 +304,13 @@ async function refresh($: Api) {
       withDate: r.kind === 'seven_day',
     }))
 
+  const cwd = await $.session.cwd()
   const next: Snap = {
     model: prettyModel(id),
     effort: String(effort).replace('medium', 'med'),
     account,
-    folder: basename(await $.session.cwd()),
+    folder: basename(cwd),
+    cwd,
     git,
     ctxTokens: usage.context.tokens,
     ctxWindow: usage.context.window,
@@ -293,7 +325,9 @@ async function refresh($: Api) {
   await update($, snap, prev => (prev && JSON.stringify(prev) === JSON.stringify(next) ? prev : next))
 }
 
-export const register: Register = on => {
+export const register: Register = (on, options) => {
+  const cfg = parseConfig(options)
+
   on('session.start', async ($, e, next) => {
     const started = await next(e)
     account = await readAccount($)
@@ -337,7 +371,8 @@ export const register: Register = on => {
 
     const { Box, Text } = $.ui.resolve(e)
     // One spare cell: emoji widths differ a little between terminals
-    const rows = layout(s, Math.max(20, e.props.bodyColumns - 1))
+    const rows = layout(s, Math.max(20, e.props.bodyColumns - 1), cfg)
+    if (!rows.length) return next(e)
 
     return (
       <Box flexDirection="column">

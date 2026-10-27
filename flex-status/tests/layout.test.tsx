@@ -5,6 +5,7 @@ const SNAP = {
   effort: 'med',
   account: 'demo-user',
   folder: 'my-project',
+  cwd: 'C:\\work\\my-project',
   git: { branch: 'master', untracked: 3, changed: 12 },
   ctxTokens: 120000,
   ctxWindow: 1000000,
@@ -36,7 +37,7 @@ function textOf(node: any): string {
 
 for (const cols of [220, 150, 100, 60, 40]) {
   test(`every chip shows at ${cols} columns`, async ($, on) => {
-    on('state.get', () => ({ value: { value: { shape: 'snap-1', value: SNAP }, version: 1 } }))
+    on('state.get', () => ({ value: { value: { shape: 'snap-2', value: SNAP }, version: 1 } }))
     const ui = await $.ui.mount(band(cols))
     const tree: any = await ui.drawn()
     const rows: string[] = (tree.children ?? tree.props?.children ?? []).map(textOf)
@@ -48,3 +49,24 @@ for (const cols of [220, 150, 100, 60, 40]) {
     await ui.unmount()
   })
 }
+
+test('left, right and segments options reorder, hide and restyle', {
+  options: {
+    left: 'git | folder',
+    right: 'clock,5h',
+    bar: false,
+    sepLeft: '/',
+    segments: '{"folder":{"depth":2,"icon":""},"clock":{"hour12":true},"5h":{"reset":false},"git":{"counts":false}}',
+  },
+}, async ($, on) => {
+  on('state.get', () => ({ value: { value: { shape: 'snap-2', value: SNAP }, version: 1 } }))
+  const ui = await $.ui.mount(band(220))
+  const tree: any = await ui.drawn()
+  const rows: string[] = (tree.children ?? tree.props?.children ?? []).map(textOf)
+  expect(rows.length).toBe(1)
+  const row = rows[0] ?? ''
+  expect(row.includes('⑂ master / .../work/my-project')).toBe(true)
+  expect(row.includes('1:00 PM · 5h 42%')).toBe(true)
+  for (const gone of ['Opus 5.5', '!12', '(15:00)', '7d', '97.31%', '⟳300K', '📁']) expect(row.includes(gone)).toBe(false)
+  await ui.unmount()
+})

@@ -1,6 +1,50 @@
 {
   "name": "flex-status",
-  "version": "0.1.2",
-  "description": "Responsive status band above the prompt: folds onto more rows instead of cutting info when the terminal narrows",
-  "types": "./types/index.d.ts"
+  "version": "0.2.0",
+  "description": "Responsive status band above the prompt: folds onto more rows instead of cutting info when the terminal narrows; every segment can be moved, hidden or restyled",
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "left": {
+      "type": "string",
+      "title": "Left segments",
+      "description": "Ids in order, \",\" joins within a group, \"|\" starts a new group. Ids: model, effort, account, folder, git, ttl, 5h, 7d, cache, session, clock.",
+      "default": "model,effort,account | folder | git"
+    },
+    "right": {
+      "type": "string",
+      "title": "Right segments",
+      "description": "Same syntax as left. Leave an id out to hide it.",
+      "default": "ttl,5h,7d | cache | session | clock"
+    },
+    "bar": {
+      "type": "boolean",
+      "title": "Context bar",
+      "description": "Draw the bar that runs up to the auto-compact point.",
+      "default": true
+    },
+    "sepInner": {
+      "type": "string",
+      "title": "Separator inside a group",
+      "description": "One symbol; a space is added on each side.",
+      "default": "·"
+    },
+    "sepLeft": {
+      "type": "string",
+      "title": "Separator between left groups",
+      "description": "One symbol; a space is added on each side.",
+      "default": ">"
+    },
+    "sepRight": {
+      "type": "string",
+      "title": "Separator between right groups",
+      "description": "One symbol; a space is added on each side.",
+      "default": "<"
+    },
+    "segments": {
+      "type": "string",
+      "title": "Per-segment options (JSON)",
+      "description": "{\"git\":{\"icon\":\"\",\"counts\":false},\"folder\":{\"depth\":2},\"clock\":{\"hour12\":true,\"seconds\":true},\"cache\":{\"decimals\":0},\"5h\":{\"reset\":false},\"model\":{\"color\":\"#ff8800\"}}. Any segment: icon (\"\" drops it), color. folder: depth. git: counts. 5h/7d: reset. cache: decimals. clock: hour12, seconds.",
+      "default": "{}"
+    }
+  }
 }

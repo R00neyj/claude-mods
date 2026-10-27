@@ -7,6 +7,7 @@ export type Snap = {
   effort: string
   account: string
   folder: string
+  cwd: string
   git: Git | null
   ctxTokens?: number
   ctxWindow: number

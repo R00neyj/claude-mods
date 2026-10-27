@@ -8,6 +8,17 @@ A status band drawn above the prompt that replaces a one-line `statusLine` comma
 
 Turn off any `statusLine` in `~/.claude/settings.json` so the two do not show at once.
 
+Every segment can be moved, hidden or restyled, as in [oh-my-pi](https://github.com/can1357/oh-my-pi)'s status line. The options sit in `/config` (or `pluginConfigs["flex-status"].options` in settings):
+
+- `left`, `right`: segment ids in order. `,` joins ids inside a group, `|` starts a new group; an id left out is hidden. Ids: `model`, `effort`, `account`, `folder`, `git`, `ttl`, `5h`, `7d`, `cache`, `session`, `clock`.
+- `bar`: the context bar on or off.
+- `sepInner`, `sepLeft`, `sepRight`: the separator symbols.
+- `segments`: JSON of per-segment knobs. Any segment takes `icon` (`""` drops it) and `color`; `folder` takes `depth`, `git` takes `counts`, `5h` / `7d` take `reset`, `cache` takes `decimals`, `clock` takes `hour12` and `seconds`.
+
+```json
+{ "left": "model | git,folder", "right": "5h,7d | clock", "segments": { "folder": { "depth": 2 }, "git": { "counts": false }, "clock": { "hour12": true } } }
+```
+
 ## tidy-tools
 
 Draws Edit, Write, Bash, PowerShell, Read, Grep and Glob calls in the transcript as compact cards, in a layout borrowed from [oh-my-pi](https://github.com/can1357/oh-my-pi): a rounded frame with the title on its top border and facts (wall time, exit code) on its bottom one. Edits and new files show only the changed lines as the engine's highlighted diff, commands show the last 10 output lines, reads show the first 12 lines with line numbers, and searches show a short tree.
