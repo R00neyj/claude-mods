@@ -1,20 +1,74 @@
 {
   "name": "flex-status",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Responsive status band above the prompt: folds onto more rows instead of cutting info when the terminal narrows; every segment can be moved, hidden or restyled",
   "types": "./types/index.d.ts",
   "userConfig": {
-    "left": {
-      "type": "string",
-      "title": "Left segments",
-      "description": "Ids in order, \",\" joins within a group, \"|\" starts a new group. Ids: model, effort, account, folder, git, ttl, 5h, 7d, cache, session, clock.",
-      "default": "model,effort,account | folder | git"
+    "showModel": {
+      "type": "boolean",
+      "title": "Show Model",
+      "description": "Draw the Model segment (it must also be listed in left/right).",
+      "default": true
     },
-    "right": {
-      "type": "string",
-      "title": "Right segments",
-      "description": "Same syntax as left. Leave an id out to hide it.",
-      "default": "ttl,5h,7d | cache | session | clock"
+    "showEffort": {
+      "type": "boolean",
+      "title": "Show Effort",
+      "description": "Draw the Effort segment (it must also be listed in left/right).",
+      "default": true
+    },
+    "showAccount": {
+      "type": "boolean",
+      "title": "Show Account",
+      "description": "Draw the Account segment (it must also be listed in left/right).",
+      "default": true
+    },
+    "showFolder": {
+      "type": "boolean",
+      "title": "Show Folder",
+      "description": "Draw the Folder segment (it must also be listed in left/right).",
+      "default": true
+    },
+    "showGit": {
+      "type": "boolean",
+      "title": "Show Git branch",
+      "description": "Draw the Git branch segment (it must also be listed in left/right).",
+      "default": true
+    },
+    "showTtl": {
+      "type": "boolean",
+      "title": "Show Cache countdown",
+      "description": "Draw the Cache countdown segment (it must also be listed in left/right).",
+      "default": true
+    },
+    "show5h": {
+      "type": "boolean",
+      "title": "Show 5h limit",
+      "description": "Draw the 5h limit segment (it must also be listed in left/right).",
+      "default": true
+    },
+    "show7d": {
+      "type": "boolean",
+      "title": "Show 7d limit",
+      "description": "Draw the 7d limit segment (it must also be listed in left/right).",
+      "default": true
+    },
+    "showCache": {
+      "type": "boolean",
+      "title": "Show Cache hit ratio",
+      "description": "Draw the Cache hit ratio segment (it must also be listed in left/right).",
+      "default": true
+    },
+    "showSession": {
+      "type": "boolean",
+      "title": "Show Session time",
+      "description": "Draw the Session time segment (it must also be listed in left/right).",
+      "default": true
+    },
+    "showClock": {
+      "type": "boolean",
+      "title": "Show Clock",
+      "description": "Draw the Clock segment (it must also be listed in left/right).",
+      "default": true
     },
     "bar": {
       "type": "boolean",
@@ -22,28 +76,84 @@
       "description": "Draw the bar that runs up to the auto-compact point.",
       "default": true
     },
-    "sepInner": {
+    "separator": {
       "type": "string",
-      "title": "Separator inside a group",
-      "description": "One symbol; a space is added on each side.",
-      "default": "·"
+      "title": "Separators",
+      "description": "classic: · > <   bar: |   slash: /   space: none",
+      "default": "classic",
+      "options": [
+        "classic",
+        "bar",
+        "slash",
+        "space"
+      ]
     },
-    "sepLeft": {
+    "folderDepth": {
       "type": "string",
-      "title": "Separator between left groups",
-      "description": "One symbol; a space is added on each side.",
-      "default": ">"
+      "title": "Folder depth",
+      "description": "How many path parts the folder segment shows.",
+      "default": "1",
+      "options": [
+        "1",
+        "2",
+        "3"
+      ]
     },
-    "sepRight": {
+    "gitCounts": {
+      "type": "boolean",
+      "title": "Git change counts",
+      "description": "Show the ?untracked and !changed counts after the branch.",
+      "default": true
+    },
+    "limitReset": {
+      "type": "boolean",
+      "title": "Limit reset time",
+      "description": "Show the reset time after the 5h and 7d percentages.",
+      "default": true
+    },
+    "cacheDecimals": {
       "type": "string",
-      "title": "Separator between right groups",
-      "description": "One symbol; a space is added on each side.",
-      "default": "<"
+      "title": "Cache hit decimals",
+      "description": "Decimals in the cache hit ratio.",
+      "default": "2",
+      "options": [
+        "0",
+        "1",
+        "2"
+      ]
+    },
+    "clockFormat": {
+      "type": "string",
+      "title": "Clock format",
+      "description": "24-hour or 12-hour clock.",
+      "default": "24h",
+      "options": [
+        "24h",
+        "12h"
+      ]
+    },
+    "clockSeconds": {
+      "type": "boolean",
+      "title": "Clock seconds",
+      "description": "Show seconds in the clock.",
+      "default": false
+    },
+    "left": {
+      "type": "string",
+      "title": "Left segments",
+      "description": "Advanced: ids in order, \",\" joins within a group, \"|\" starts a new group. Ids: model, effort, account, folder, git, ttl, 5h, 7d, cache, session, clock. The toggles below hide on top of this.",
+      "default": "model,effort,account | folder | git"
+    },
+    "right": {
+      "type": "string",
+      "title": "Right segments",
+      "description": "Advanced: same syntax as left.",
+      "default": "ttl,5h,7d | cache | session | clock"
     },
     "segments": {
       "type": "string",
-      "title": "Per-segment options (JSON)",
-      "description": "{\"git\":{\"icon\":\"\",\"counts\":false},\"folder\":{\"depth\":2},\"clock\":{\"hour12\":true,\"seconds\":true},\"cache\":{\"decimals\":0},\"5h\":{\"reset\":false},\"model\":{\"color\":\"#ff8800\"}}. Any segment: icon (\"\" drops it), color. folder: depth. git: counts. 5h/7d: reset. cache: decimals. clock: hour12, seconds.",
+      "title": "Per-segment options (JSON, advanced)",
+      "description": "Overrides the pickers above for one segment, and adds icon (\"\" drops it) and color: {\"git\":{\"icon\":\"\"},\"model\":{\"color\":\"#ff8800\"},\"folder\":{\"depth\":2}}. Knobs: folder depth, git counts, 5h/7d reset, cache decimals, clock hour12/seconds.",
       "default": "{}"
     }
   }

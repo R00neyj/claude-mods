@@ -50,23 +50,42 @@ for (const cols of [220, 150, 100, 60, 40]) {
   })
 }
 
-test('left, right and segments options reorder, hide and restyle', {
+const drawn = async ($: any, on: any, cols: number) => {
+  on('state.get', () => ({ value: { value: { shape: 'snap-2', value: SNAP }, version: 1 } }))
+  const ui = await $.ui.mount(band(cols))
+  const tree: any = await ui.drawn()
+  const rows: string[] = (tree.children ?? tree.props?.children ?? []).map(textOf)
+  await ui.unmount()
+  return rows
+}
+
+test('left, right, pickers and segments options reorder, hide and restyle', {
   options: {
     left: 'git | folder',
     right: 'clock,5h',
     bar: false,
-    sepLeft: '/',
-    segments: '{"folder":{"depth":2,"icon":""},"clock":{"hour12":true},"5h":{"reset":false},"git":{"counts":false}}',
+    separator: 'slash',
+    folderDepth: '2',
+    clockFormat: '12h',
+    limitReset: false,
+    gitCounts: false,
+    showModel: false,
+    segments: '{"folder":{"icon":""}}',
   },
 }, async ($, on) => {
-  on('state.get', () => ({ value: { value: { shape: 'snap-2', value: SNAP }, version: 1 } }))
-  const ui = await $.ui.mount(band(220))
-  const tree: any = await ui.drawn()
-  const rows: string[] = (tree.children ?? tree.props?.children ?? []).map(textOf)
+  const rows = await drawn($, on, 220)
   expect(rows.length).toBe(1)
   const row = rows[0] ?? ''
   expect(row.includes('⑂ master / .../work/my-project')).toBe(true)
-  expect(row.includes('1:00 PM · 5h 42%')).toBe(true)
+  expect(row.includes('1:00 PM / 5h 42%')).toBe(true)
   for (const gone of ['Opus 5.5', '!12', '(15:00)', '7d', '97.31%', '⟳300K', '📁']) expect(row.includes(gone)).toBe(false)
-  await ui.unmount()
+})
+
+test('a segment toggled off is hidden, its own JSON beats the picker', {
+  options: { showClock: false, showCache: false, cacheDecimals: '0', gitCounts: false, segments: '{"git":{"counts":true}}' },
+}, async ($, on) => {
+  const all = (await drawn($, on, 220)).join(' ')
+  expect(all.includes('🕐')).toBe(false)
+  expect(all.includes('💾')).toBe(false)
+  expect(all.includes('?3 !12')).toBe(true)
 })

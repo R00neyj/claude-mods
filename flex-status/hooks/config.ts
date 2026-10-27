@@ -65,16 +65,47 @@ function parseSegments(text: string): Config['seg'] {
 const str = (v: unknown, fallback: string) => (typeof v === 'string' ? v : fallback)
 const pad = (sym: string) => (sym.trim() ? ` ${sym.trim()} ` : ' ')
 
-export function parseConfig(options: Readonly<Record<string, unknown>>): Config {
+// Separator presets: inside a group, between left groups, between right groups
+const SEPARATORS: Record<string, [string, string, string]> = {
+  classic: ['·', '>', '<'],
+  bar: ['|', '|', '|'],
+  slash: ['/', '/', '/'],
+  space: ['', '', ''],
+}
+
+// Option key of each segment's on/off toggle
+const showKey = (id: SegId) => `show${id.charAt(0).toUpperCase()}${id.slice(1)}`
+
+// Picker values are defaults; a segment's own entry in the JSON wins
+function pickerKnobs(o: Readonly<Record<string, unknown>>): Config['seg'] {
+  const depth = Number(str(o.folderDepth, '1'))
+  const decimals = Number(str(o.cacheDecimals, '2'))
+  const reset = o.limitReset !== false
   return {
-    left: parseGroups(str(options.left, DEFAULT_LEFT)),
-    right: parseGroups(str(options.right, DEFAULT_RIGHT)),
+    folder: { depth },
+    git: { counts: o.gitCounts !== false },
+    '5h': { reset },
+    '7d': { reset },
+    cache: { decimals },
+    clock: { hour12: o.clockFormat === '12h', seconds: o.clockSeconds === true },
+  }
+}
+
+export function parseConfig(options: Readonly<Record<string, unknown>>): Config {
+  const hidden = (id: SegId) => options[showKey(id)] === false
+  const shown = (groups: SegId[][]) => groups.map(g => g.filter(id => !hidden(id))).filter(g => g.length > 0)
+  const [inner, left, right] = SEPARATORS[str(options.separator, 'classic')] ?? SEPARATORS.classic!
+  const knobs = pickerKnobs(options)
+  const own = parseSegments(str(options.segments, '{}'))
+  const seg: Config['seg'] = {}
+  for (const id of SEG_IDS) {
+    if (knobs[id] || own[id]) seg[id] = { ...knobs[id], ...own[id] }
+  }
+  return {
+    left: shown(parseGroups(str(options.left, DEFAULT_LEFT))),
+    right: shown(parseGroups(str(options.right, DEFAULT_RIGHT))),
     bar: options.bar !== false,
-    sep: {
-      inner: pad(str(options.sepInner, '·')),
-      left: pad(str(options.sepLeft, '>')),
-      right: pad(str(options.sepRight, '<')),
-    },
-    seg: parseSegments(str(options.segments, '{}')),
+    sep: { inner: pad(inner), left: pad(left), right: pad(right) },
+    seg,
   }
 }

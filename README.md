@@ -8,15 +8,14 @@ A status band drawn above the prompt that replaces a one-line `statusLine` comma
 
 Turn off any `statusLine` in `~/.claude/settings.json` so the two do not show at once.
 
-Every segment can be moved, hidden or restyled, as in [oh-my-pi](https://github.com/can1357/oh-my-pi)'s status line. The options sit in `/config` (or `pluginConfigs["flex-status"].options` in settings):
+Every segment can be shown, hidden or restyled, as in [oh-my-pi](https://github.com/can1357/oh-my-pi)'s status line. The options sit in `/config` (or `pluginConfigs["flex-status"].options` in settings):
 
-- `left`, `right`: segment ids in order. `,` joins ids inside a group, `|` starts a new group; an id left out is hidden. Ids: `model`, `effort`, `account`, `folder`, `git`, `ttl`, `5h`, `7d`, `cache`, `session`, `clock`.
-- `bar`: the context bar on or off.
-- `sepInner`, `sepLeft`, `sepRight`: the separator symbols.
-- `segments`: JSON of per-segment knobs. Any segment takes `icon` (`""` drops it) and `color`; `folder` takes `depth`, `git` takes `counts`, `5h` / `7d` take `reset`, `cache` takes `decimals`, `clock` takes `hour12` and `seconds`.
+- Toggles and pickers: `showModel` … `showClock` (one per segment), `bar`, `separator` (classic / bar / slash / space), `folderDepth` (1-3), `gitCounts`, `limitReset`, `cacheDecimals` (0-2), `clockFormat` (24h / 12h), `clockSeconds`.
+- `left`, `right` (advanced): segment ids in order. `,` joins ids inside a group, `|` starts a new group. Ids: `model`, `effort`, `account`, `folder`, `git`, `ttl`, `5h`, `7d`, `cache`, `session`, `clock`. A `show…` toggle hides on top of these.
+- `segments` (advanced): JSON for one segment, which beats the pickers. Any segment takes `icon` (`""` drops it) and `color`; the knobs above are `depth`, `counts`, `reset`, `decimals`, `hour12`, `seconds`.
 
 ```json
-{ "left": "model | git,folder", "right": "5h,7d | clock", "segments": { "folder": { "depth": 2 }, "git": { "counts": false }, "clock": { "hour12": true } } }
+{ "left": "model | git,folder", "right": "5h,7d | clock", "segments": { "git": { "icon": "" }, "model": { "color": "#ff8800" } } }
 ```
 
 ## tidy-tools
