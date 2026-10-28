@@ -1,6 +1,6 @@
 {
   "name": "flex-status",
-  "version": "0.3.1",
+  "version": "0.3.3",
   "description": "Responsive status band above the prompt: folds onto more rows instead of cutting info when the terminal narrows; every segment can be moved, hidden or restyled",
   "types": "./types/index.d.ts",
   "userConfig": {
@@ -137,6 +137,36 @@
       "title": "Clock seconds",
       "description": "Show seconds in the clock.",
       "default": false
+    },
+    "autoCompact": {
+      "type": "boolean",
+      "title": "Compact before cache expires",
+      "description": "Run /compact shortly before the prompt cache expires, while the context is still a cheap cache read.",
+      "default": true
+    },
+    "compactLead": {
+      "type": "string",
+      "title": "Compact lead (seconds)",
+      "description": "How many seconds before the cache expires the compact starts.",
+      "default": "60",
+      "options": [
+        "30",
+        "60",
+        "120",
+        "180"
+      ]
+    },
+    "compactMinTokens": {
+      "type": "string",
+      "title": "Compact minimum context",
+      "description": "Skip the auto-compact while the context is smaller than this many tokens.",
+      "default": "50000",
+      "options": [
+        "0",
+        "20000",
+        "50000",
+        "100000"
+      ]
     },
     "left": {
       "type": "string",

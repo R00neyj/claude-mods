@@ -33,6 +33,7 @@ export type Config = {
   bar: boolean
   sep: { inner: string; left: string; right: string }
   seg: Partial<Record<SegId, SegConf>>
+  compact: { on: boolean; leadMs: number; minTokens: number }
 }
 
 export const DEFAULT_LEFT = 'model,effort,account | folder | git'
@@ -107,5 +108,10 @@ export function parseConfig(options: Readonly<Record<string, unknown>>): Config 
     bar: options.bar !== false,
     sep: { inner: pad(inner), left: pad(left), right: pad(right) },
     seg,
+    compact: {
+      on: options.autoCompact !== false,
+      leadMs: Math.max(5, Number(str(options.compactLead, '60')) || 60) * 1000,
+      minTokens: Math.max(0, Number(str(options.compactMinTokens, '50000')) || 0),
+    },
   }
 }

@@ -239,6 +239,27 @@ let ttlMs = 5 * 60_000
 let cacheRead = 0
 let cacheAll = 0
 let tick = 0
+let compactedFor: number | undefined
+let compacting = false
+
+// Compacts once per cache window, just before it lapses; a running turn makes compact reject and the next tick retries
+async function maybeCompact($: Api, cfg: Config, ctxTokens: number | undefined, now: number) {
+  if (!cfg.compact.on || compacting || cacheExpiresAt === undefined || compactedFor === cacheExpiresAt) return
+  if (now < cacheExpiresAt - cfg.compact.leadMs || now >= cacheExpiresAt) return
+  if ((ctxTokens ?? 0) < cfg.compact.minTokens) return
+  compacting = true
+  try {
+    const { skip } = await $.session.compact()
+    compactedFor = cacheExpiresAt
+    if (!skip) {
+      cacheExpiresAt = undefined
+      $.ui.toast('캐시 만료 전 자동 compact 완료')
+    }
+  } catch {
+  } finally {
+    compacting = false
+  }
+}
 
 async function readAccount($: Api) {
   const dir = await $.env.get('CLAUDE_CONFIG_DIR')
@@ -286,7 +307,7 @@ async function refreshCompact($: Api) {
   } catch {}
 }
 
-async function refresh($: Api) {
+async function refresh($: Api, cfg: Config) {
   tick += 1
   if (tick % 5 === 1) git = await readGit($)
   const [usage, model, now] = await Promise.all([$.session.usage(), $.session.model(), $.clock.now()])
@@ -303,6 +324,8 @@ async function refresh($: Api) {
       resetsAt: r.resetsAt,
       withDate: r.kind === 'seven_day',
     }))
+
+  void maybeCompact($, cfg, usage.context.tokens, now)
 
   const cwd = await $.session.cwd()
   const next: Snap = {
@@ -332,8 +355,8 @@ export const register: Register = (on, options) => {
     const started = await next(e)
     account = await readAccount($)
     await refreshCompact($)
-    await refresh($)
-    $.clock.every(1000, () => void refresh($).catch(() => {}))
+    await refresh($, cfg)
+    $.clock.every(1000, () => void refresh($, cfg).catch(() => {}))
     return started
   })
 
@@ -360,7 +383,7 @@ export const register: Register = (on, options) => {
     if (e.agentId === undefined) {
       git = await readGit($)
       await refreshCompact($)
-      await refresh($).catch(() => {})
+      await refresh($, cfg).catch(() => {})
     }
     return done
   })
