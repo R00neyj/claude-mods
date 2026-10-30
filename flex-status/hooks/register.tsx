@@ -235,6 +235,7 @@ let modelId = ''
 let liveModel = ''
 let git: Git | null = null
 let advisor = false
+let settingsFile = ''
 let compactAt: number | undefined
 let cacheExpiresAt: number | undefined
 let ttlMs = 5 * 60_000
@@ -302,9 +303,18 @@ async function effortFallback($: Api, id: string): Promise<string> {
   }
 }
 
+// The engine's merged settings lag a turn behind /advisor, so the user file is read directly
+async function findSettingsFile($: Api) {
+  const dir = await $.env.get('CLAUDE_CONFIG_DIR')
+  const home = (await $.env.get('USERPROFILE')) || (await $.env.get('HOME')) || ''
+  settingsFile = dir ? `${dir}/settings.json` : home ? `${home}/.claude/settings.json` : ''
+}
+
 async function readAdvisor($: Api) {
+  if (!settingsFile) return
   try {
-    advisor = Boolean(await $.settings.read({ key: 'advisorModel' }))
+    const s = JSON.parse(await $.fs.read(settingsFile)) as { advisorModel?: unknown }
+    advisor = Boolean(s.advisorModel)
   } catch {}
 }
 
@@ -317,10 +327,8 @@ async function refreshCompact($: Api) {
 
 async function refresh($: Api, cfg: Config) {
   tick += 1
-  if (tick % 5 === 1) {
-    git = await readGit($)
-    await readAdvisor($)
-  }
+  if (tick % 5 === 1) git = await readGit($)
+  await readAdvisor($)
   const [usage, model, now] = await Promise.all([$.session.usage(), $.session.model(), $.clock.now()])
   const id = model || modelId
   // A switch makes the last request's effort stale; the saved per-model level applies until the next request
@@ -371,6 +379,7 @@ export const register: Register = (on, options) => {
   on('session.start', async ($, e, next) => {
     const started = await next(e)
     account = await readAccount($)
+    await findSettingsFile($)
     await refreshCompact($)
     await refresh($, cfg)
     $.clock.every(1000, () => void refresh($, cfg).catch(() => {}))
