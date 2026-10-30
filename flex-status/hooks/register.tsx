@@ -109,7 +109,7 @@ function clockText(d: Date, c: SegConf): string {
 }
 
 const SEGMENTS: Record<SegId, Seg> = {
-  model: (s, c) => tint([{ t: label(c, '⬢', s.model), c: ACCENT }], c),
+  model: (s, c) => tint(s.advisor ? [{ t: label(c, '⬢', s.model), c: ACCENT }, { t: ' 👁' }] : [{ t: label(c, '⬢', s.model), c: ACCENT }], c),
   effort: (s, c) => (s.effort ? tint([{ t: label(c, '◑', s.effort), c: ACCENT }], c) : null),
   account: (s, c) => (s.account ? tint([{ t: label(c, '', s.account), c: DIM }], c) : null),
   folder: (s, c) => {
@@ -234,6 +234,7 @@ let effort = ''
 let modelId = ''
 let liveModel = ''
 let git: Git | null = null
+let advisor = false
 let compactAt: number | undefined
 let cacheExpiresAt: number | undefined
 let ttlMs = 5 * 60_000
@@ -301,6 +302,12 @@ async function effortFallback($: Api, id: string): Promise<string> {
   }
 }
 
+async function readAdvisor($: Api) {
+  try {
+    advisor = Boolean(await $.settings.read({ key: 'advisorModel' }))
+  } catch {}
+}
+
 async function refreshCompact($: Api) {
   try {
     const u = await $.session.usage({ breakdown: 'summary' })
@@ -310,7 +317,10 @@ async function refreshCompact($: Api) {
 
 async function refresh($: Api, cfg: Config) {
   tick += 1
-  if (tick % 5 === 1) git = await readGit($)
+  if (tick % 5 === 1) {
+    git = await readGit($)
+    await readAdvisor($)
+  }
   const [usage, model, now] = await Promise.all([$.session.usage(), $.session.model(), $.clock.now()])
   const id = model || modelId
   // A switch makes the last request's effort stale; the saved per-model level applies until the next request
@@ -337,6 +347,7 @@ async function refresh($: Api, cfg: Config) {
   const next: Snap = {
     model: prettyModel(id),
     effort: String(effort).replace('medium', 'med'),
+    advisor,
     account,
     folder: basename(cwd),
     cwd,

@@ -50,8 +50,8 @@ for (const cols of [220, 150, 100, 60, 40]) {
   })
 }
 
-const drawn = async ($: any, on: any, cols: number) => {
-  on('state.get', () => ({ value: { value: { shape: 'snap-2', value: SNAP }, version: 1 } }))
+const drawn = async ($: any, on: any, cols: number, extra: object = {}) => {
+  on('state.get', () => ({ value: { value: { shape: 'snap-2', value: { ...SNAP, ...extra } }, version: 1 } }))
   const ui = await $.ui.mount(band(cols))
   const tree: any = await ui.drawn()
   const rows: string[] = (tree.children ?? tree.props?.children ?? []).map(textOf)
@@ -88,4 +88,12 @@ test('a segment toggled off is hidden, its own JSON beats the picker', {
   expect(all.includes('🕐')).toBe(false)
   expect(all.includes('💾')).toBe(false)
   expect(all.includes('?3 !12')).toBe(true)
+})
+
+test('the eye follows the model while the advisor is on', async ($, on) => {
+  expect((await drawn($, on, 220, { advisor: true })).join(' ').includes('Opus 5.5 👁')).toBe(true)
+})
+
+test('no eye while the advisor is off', async ($, on) => {
+  expect((await drawn($, on, 220)).join(' ').includes('👁')).toBe(false)
 })

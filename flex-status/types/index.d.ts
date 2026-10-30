@@ -5,6 +5,7 @@ export type Limit = { label: string; pct: number; resetsAt?: string; withDate: b
 export type Snap = {
   model: string
   effort: string
+  advisor?: boolean
   account: string
   folder: string
   cwd: string
