@@ -109,7 +109,7 @@ function clockText(d: Date, c: SegConf): string {
 }
 
 const SEGMENTS: Record<SegId, Seg> = {
-  model: (s, c) => tint(s.advisor ? [{ t: label(c, '⬢', s.model), c: ACCENT }, { t: ' 👁' }] : [{ t: label(c, '⬢', s.model), c: ACCENT }], c),
+  model: (s, c) => tint(s.advisor ? [{ t: label(c, '⬢', s.model), c: ACCENT }, { t: ' 👁 ' }] : [{ t: label(c, '⬢', s.model), c: ACCENT }], c),
   effort: (s, c) => (s.effort ? tint([{ t: label(c, '◑', s.effort), c: ACCENT }], c) : null),
   account: (s, c) => (s.account ? tint([{ t: label(c, '', s.account), c: DIM }], c) : null),
   folder: (s, c) => {
