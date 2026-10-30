@@ -203,7 +203,17 @@ function pack(items: Item[], cols: number): Span[][] {
   return rows.map(toSpans)
 }
 
-export function layout(s: Snap, cols: number, cfg: Config): Span[][] {
+// The band gets only the rows the tasks list leaves: drop the bar, then squeeze all onto one row
+export function layout(s: Snap, cols: number, cfg: Config, maxRows = Infinity): Span[][] {
+  const rows = layoutRows(s, cols, cfg)
+  if (rows.length <= maxRows) return rows
+  const noBar = layoutRows(s, cols, { ...cfg, bar: false })
+  if (noBar.length <= maxRows) return noBar
+  if (maxRows > 1) return noBar.slice(0, maxRows)
+  return [noBar.flatMap((row, i) => (i ? [{ t: ' ' }, ...row] : row))]
+}
+
+function layoutRows(s: Snap, cols: number, cfg: Config): Span[][] {
   const left = flatten(groupsOf(cfg.left, s, cfg), cfg.sep.inner, cfg.sep.left)
   const right = flatten(groupsOf(cfg.right, s, cfg), cfg.sep.inner, cfg.sep.right)
   const L = toSpans(left)
@@ -420,7 +430,7 @@ export const register: Register = (on, options) => {
 
     const { Box, Text } = $.ui.resolve(e)
     // One spare cell: emoji widths differ a little between terminals
-    const rows = layout(s, Math.max(20, e.props.bodyColumns - 1), cfg)
+    const rows = layout(s, Math.max(20, e.props.bodyColumns - 1), cfg, Math.max(1, e.props.maxRows))
     if (!rows.length) return next(e)
 
     return (

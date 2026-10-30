@@ -97,3 +97,14 @@ test('the eye follows the model while the advisor is on', async ($, on) => {
 test('no eye while the advisor is off', async ($, on) => {
   expect((await drawn($, on, 220)).join(' ').includes('👁')).toBe(false)
 })
+
+for (const maxRows of [1, 2]) {
+  test(`the band fits ${maxRows} row(s) when the tasks list takes the rest`, async ($, on) => {
+    on('state.get', () => ({ value: { value: { shape: 'snap-2', value: SNAP }, version: 1 } }))
+    const ui = await $.ui.mount({ ...band(100), props: { ...band(100).props, maxRows } })
+    const tree: any = await ui.drawn()
+    const rows = tree.children ?? tree.props?.children ?? []
+    expect(rows.length <= maxRows).toBe(true)
+    await ui.unmount()
+  })
+}
