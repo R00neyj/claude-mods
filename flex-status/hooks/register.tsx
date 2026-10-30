@@ -232,6 +232,7 @@ const basename = (p: string) => p.replace(/[\\/]+$/, '').split(/[\\/]/).pop() ||
 let account = ''
 let effort = ''
 let modelId = ''
+let liveModel = ''
 let git: Git | null = null
 let compactAt: number | undefined
 let cacheExpiresAt: number | undefined
@@ -312,6 +313,11 @@ async function refresh($: Api, cfg: Config) {
   if (tick % 5 === 1) git = await readGit($)
   const [usage, model, now] = await Promise.all([$.session.usage(), $.session.model(), $.clock.now()])
   const id = model || modelId
+  // A switch makes the last request's effort stale; the saved per-model level applies until the next request
+  if (model && model !== liveModel) {
+    liveModel = model
+    effort = ''
+  }
   if (!effort) effort = await effortFallback($, id)
   // Subscription sessions get the 1h prompt-cache TTL, API-key sessions 5m (assumption, no API field says)
   ttlMs = usage.rateLimits.length ? 60 * 60_000 : 5 * 60_000
