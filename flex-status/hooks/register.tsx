@@ -243,6 +243,7 @@ let account = ''
 let effort = ''
 let modelId = ''
 let liveModel = ''
+let liveEffort = ''
 let git: Git | null = null
 let advisor = false
 let settingsFile = ''
@@ -346,7 +347,13 @@ async function refresh($: Api, cfg: Config) {
     liveModel = model
     effort = ''
   }
-  if (!effort) effort = await effortFallback($, id)
+  // So does a new saved level for the same model (/effort, the /model picker)
+  const saved = await effortFallback($, id)
+  if (saved !== liveEffort) {
+    liveEffort = saved
+    if (saved) effort = saved
+  }
+  if (!effort) effort = saved
   // Subscription sessions get the 1h prompt-cache TTL, API-key sessions 5m (assumption, no API field says)
   ttlMs = usage.rateLimits.length ? 60 * 60_000 : 5 * 60_000
 
