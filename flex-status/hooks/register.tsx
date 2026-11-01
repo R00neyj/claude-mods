@@ -304,11 +304,19 @@ async function readGit($: Api): Promise<Git | null> {
   }
 }
 
+const savedEffort = (s: Record<string, any>, id: string): string =>
+  String(s.modelSettings?.[id.replace(/\[.*\]$/, '')]?.effortLevel ?? s.effortLevel ?? '')
+
+// The engine's merged settings lag a turn behind /effort, so the user file is tried first
 async function effortFallback($: Api, id: string): Promise<string> {
+  if (settingsFile) {
+    try {
+      const fromFile = savedEffort(JSON.parse(await $.fs.read(settingsFile)), id)
+      if (fromFile) return fromFile
+    } catch {}
+  }
   try {
-    const s = (await $.settings.read()) as Record<string, any>
-    const key = id.replace(/\[.*\]$/, '')
-    return String(s.modelSettings?.[key]?.effortLevel ?? s.effortLevel ?? '')
+    return savedEffort((await $.settings.read()) as Record<string, any>, id)
   } catch {
     return ''
   }
