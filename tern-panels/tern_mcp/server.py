@@ -6,11 +6,14 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import webbrowser
 from pathlib import Path
 from typing import Literal
 
 from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
+
+from tern_mcp.browser import Preview
 
 RENDERER = Path(__file__).with_name("renderer.py")
 STATE_DIR = Path(os.environ.get("LOCALAPPDATA") or tempfile.gettempdir()) / "tern-mcp"
@@ -18,8 +21,9 @@ NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
 mcp = MCPServer(
     "tern",
-    instructions="Tern 터미널에 네이티브 패널(마크다운 뷰어·Mermaid 다이어그램·웹뷰)을 띄움. Tern pane 안에서 실행될 때만 동작함.",
+    instructions="마크다운 뷰어·Mermaid 다이어그램·웹뷰 패널을 띄움. Tern pane 안이면 Tern 네이티브 패널, 밖(Windows Terminal 등)이면 기본 브라우저 미리보기로 열림.",
 )
+preview = Preview()
 
 
 class TernError(ToolError):
@@ -30,15 +34,20 @@ def _log(msg: str) -> None:
     print(f"[tern-mcp] {msg}", file=sys.stderr, flush=True)
 
 
+def _tern_exe() -> str | None:
+    return os.environ.get("TERN_EXE") or shutil.which("tern")
+
+
+def _in_tern_pane() -> bool:
+    return bool(os.environ.get("TERN_PANE")) and _tern_exe() is not None
+
+
 def _pane() -> str:
-    pane = os.environ.get("TERN_PANE")
-    if not pane:
-        raise TernError("TERN_PANE 없음: Tern 터미널 밖에서 실행 중임. Tern pane 안에서 Claude Code를 실행해야 함.")
-    return pane
+    return os.environ["TERN_PANE"]
 
 
 def _tern(*args: str, timeout: float = 20) -> str:
-    exe = os.environ.get("TERN_EXE") or shutil.which("tern")
+    exe = _tern_exe()
     if not exe:
         raise TernError("tern 실행 파일을 찾을 수 없음 (TERN_EXE / PATH).")
     r = subprocess.run(
@@ -107,33 +116,38 @@ def render_markdown_panel(
     title: str | None = None,
     split: Literal["right", "down"] = "right",
 ) -> str:
-    """Show markdown in a native Tern panel (GUI sans font; mermaid fences render natively); `filepath` live-reloads with appended text typed out, or pass `content`."""
+    """Show markdown in a panel (Tern pane: native GUI-font panel; elsewhere: browser preview); `filepath` live-reloads with appended text typed out, or pass `content`. Mermaid fences render."""
     if not filepath and content is None:
         raise TernError("filepath 또는 content 중 하나 필요함.")
-    payload: dict = {"title": title}
+    src = None
     if filepath:
         src = Path(filepath).expanduser().resolve()
         if not src.is_file():
             raise TernError(f"파일 없음: {src}")
-        payload["path"] = str(src)
-    else:
-        payload["text"] = content
+    if not _in_tern_pane():
+        return preview.show("markdown", title or (src.name if src else "Markdown"), src, content or "")
+    payload: dict = {"title": title, "path": str(src)} if src else {"title": title, "text": content}
     return _show_native("markdown", payload, split)
 
 
 @mcp.tool()
 def render_mermaid_diagram(code: str, title: str = "Diagram", split: Literal["right", "down"] = "right") -> str:
-    """Render Mermaid code with Tern's built-in engine (vector, theme-aware) in its own native panel; reuses it."""
+    """Render Mermaid code in its own panel (Tern pane: Tern's built-in engine; elsewhere: browser preview); reuses it."""
     body = f"```mermaid\n{code.strip()}\n```\n"
+    if not _in_tern_pane():
+        return preview.show("diagram", title, None, body)
     return _show_native("diagram", {"title": title, "text": body}, split)
 
 
 @mcp.tool()
 def open_webview_panel(url: str, how: Literal["beside", "below", "pip"] = "beside") -> str:
-    """Open a URL (e.g. local dev server http://localhost:3000) in a Tern browser panel; reuses it ("pip" = picture-in-picture)."""
+    """Open a URL (e.g. local dev server http://localhost:3000) in a Tern browser panel, or the default browser outside a Tern pane."""
     global web_block
     if not url.startswith(("http://", "https://")):
         raise TernError("http(s) URL만 지원함 (Tern browser 블록은 file:// 로드 안 됨).")
+    if not _in_tern_pane():
+        webbrowser.open(url)
+        return f"기본 브라우저로 엶: {url}"
     if web_block is not None and web_block in _browser_blocks():
         _browser({"op": "goto", "block": web_block, "url": url})
     else:
@@ -146,9 +160,11 @@ def open_webview_panel(url: str, how: Literal["beside", "below", "pip"] = "besid
 
 @mcp.tool()
 def close_tern_panels() -> str:
-    """Close every panel this server opened (markdown, diagram, webview)."""
+    """Close every panel this server opened (markdown, diagram, webview); browser previews show a closed notice."""
     global web_block
-    closed = []
+    closed = [f"browser:{k}" for k in preview.close_all()]
+    if not _in_tern_pane():
+        return f"닫음: {', '.join(closed)}" if closed else "열린 패널 없음."
     live = _live_blocks() if panels else set()
     for kind, block in panels.items():
         if block in live:

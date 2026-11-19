@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>tern-panels</title>
+<style>
+:root{--bg:#ffffff;--fg:#1f2328;--muted:#656d76;--line:#d0d7de;--code-bg:#f6f8fa;--accent:#0969da;--ok:#1a7f37;--off:#cf222e;color-scheme:light}
+@media (prefers-color-scheme: dark){:root{--bg:#0d1117;--fg:#e6edf3;--muted:#8d96a0;--line:#30363d;--code-bg:#161b22;--accent:#4493f8;--ok:#3fb950;--off:#f85149;color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--fg)}
+body{font:16px/1.65 "Pretendard","Segoe UI",system-ui,-apple-system,sans-serif}
+header{position:sticky;top:0;z-index:1;display:flex;align-items:center;gap:10px;padding:10px 24px;background:var(--bg);border-bottom:1px solid var(--line)}
+header h1{margin:0;font-size:15px;font-weight:600;white-space:nowrap}
+header .path{flex:1;min-width:0;color:var(--muted);font:12px ui-monospace,Consolas,monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;direction:rtl;text-align:left}
+header .dot{width:8px;height:8px;border-radius:50%;background:var(--off);flex:none}
+header .dot.on{background:var(--ok)}
+main{max-width:900px;margin:0 auto;padding:24px 24px 40vh}
+main h1,main h2{border-bottom:1px solid var(--line);padding-bottom:.3em}
+main a{color:var(--accent)}
+main code{font:85% ui-monospace,Consolas,monospace;background:var(--code-bg);padding:.15em .35em;border-radius:5px}
+main pre{background:var(--code-bg);padding:14px 16px;border-radius:8px;overflow:auto}
+main pre code{background:none;padding:0;font-size:13px}
+main table{border-collapse:collapse;display:block;overflow:auto}
+main th,main td{border:1px solid var(--line);padding:6px 12px}
+main blockquote{margin:0;padding:0 1em;color:var(--muted);border-left:4px solid var(--line)}
+main img{max-width:100%}
+.mermaid{display:flex;justify-content:center;margin:16px 0}
+.mermaid svg{max-width:100%;height:auto}
+.empty{color:var(--muted);text-align:center;padding:20vh 0}
+@media (max-width:600px){header{padding:10px 16px}main{padding:16px 16px 40vh}}
+</style>
+</head>
+<body>
+<header><span class="dot" id="dot" title="연결 상태"></span><h1 id="title">연결 중…</h1><span class="path" id="path"></span></header>
+<main id="doc"><p class="empty">불러오는 중…</p></main>
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js"></script>
+<script>
+const REVEAL_MS = 1200, FRAME_MS = 33;
+const kind = location.pathname.split('/').pop();
+const doc = document.getElementById('doc');
+const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+mermaid.initialize({startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict'});
+const svgCache = new Map();
+let target = '', shown = 0, step = 1, raf = null, lastPaint = 0, seq = 0;
+
+function nearBottom() { return innerHeight + scrollY >= document.body.scrollHeight - 80; }
+
+async function paint(final) {
+  const follow = nearBottom();
+  doc.innerHTML = DOMPurify.sanitize(marked.parse(target.slice(0, shown)));
+  // 타이핑 중엔 캐시된 다이어그램만 쓰고, 새 다이어그램은 마지막 프레임에서 렌더링
+  for (const code of doc.querySelectorAll('pre > code.language-mermaid')) {
+    const src = code.textContent;
+    if (!svgCache.has(src) && !final) continue;
+    const box = document.createElement('div');
+    box.className = 'mermaid';
+    code.parentElement.replaceWith(box);
+    if (!svgCache.has(src)) {
+      try { svgCache.set(src, (await mermaid.render('m' + (++seq), src)).svg); }
+      catch (e) { svgCache.set(src, `<pre>Mermaid 오류: ${DOMPurify.sanitize(String(e.message || e))}</pre>`); }
+    }
+    box.innerHTML = svgCache.get(src);
+  }
+  if (follow) scrollTo(0, document.body.scrollHeight);
+}
+
+function tick(ts) {
+  shown = Math.min(target.length, shown + step);
+  const done = shown >= target.length;
+  if (done || ts - lastPaint >= FRAME_MS) { paint(done); lastPaint = ts; }
+  raf = done ? null : requestAnimationFrame(tick);
+}
+
+function update(s) {
+  document.title = s.title || 'tern-panels';
+  document.getElementById('title').textContent = s.title || '';
+  document.getElementById('path').textContent = s.path ? '‎' + s.path : '';
+  if (s.closed) { doc.innerHTML = '<p class="empty">패널이 닫힘. 이 탭은 닫아도 됨.</p>'; target = ''; shown = 0; return; }
+  const t = s.text || '';
+  if (!t.trim()) { target = t; shown = 0; doc.innerHTML = '<p class="empty">내용 없음</p>'; return; }
+  const appended = target && t.length > shown && t.startsWith(target.slice(0, shown));
+  target = t;
+  if (!appended) { shown = t.length; if (raf) cancelAnimationFrame(raf), raf = null; paint(true); return; }
+  step = Math.max(1, (t.length - shown) * 16 / REVEAL_MS);
+  if (!raf) raf = requestAnimationFrame(tick);
+}
+
+const es = new EventSource('/events/' + kind);
+es.onopen = () => document.getElementById('dot').classList.add('on');
+es.onerror = () => document.getElementById('dot').classList.remove('on');
+es.onmessage = (e) => update(JSON.parse(e.data));
+</script>
+</body>
+</html>

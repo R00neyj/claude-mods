@@ -22,7 +22,7 @@
     {
       "name": "tern-panels",
       "source": "./tern-panels",
-      "description": "Tern native panels from Claude Code: markdown viewer in the GUI font with smooth streaming, native Mermaid diagrams and a webview as MCP tools"
+      "description": "Markdown, Mermaid and webview panels from Claude Code: Tern native panels inside a Tern pane, a live browser preview elsewhere"
     }
   ]
 }

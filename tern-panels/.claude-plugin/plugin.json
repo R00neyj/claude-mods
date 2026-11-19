@@ -1,7 +1,7 @@
 {
   "name": "tern-panels",
-  "version": "0.2.0",
-  "description": "Tern native panels from Claude Code: markdown viewer (GUI sans font, smooth streaming), native Mermaid diagrams and a webview as MCP tools",
+  "version": "0.3.0",
+  "description": "Markdown, Mermaid and webview panels from Claude Code: Tern native panels inside a Tern pane, a live browser preview elsewhere",
   "mcpServers": {
     "tern": {
       "command": "uv",
