@@ -18,6 +18,11 @@
       "name": "typewriter",
       "source": "./typewriter",
       "description": "Types each new reply block out at an even pace, 60 frames a second"
+    },
+    {
+      "name": "tern-panels",
+      "source": "./tern-panels",
+      "description": "Tern native panels from Claude Code: markdown viewer in the GUI font, webview and Mermaid diagrams as MCP tools"
     }
   ]
 }

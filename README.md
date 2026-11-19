@@ -32,6 +32,10 @@ The terminal draws a streamed reply in batches of whole lines, so text lands in 
 
 - `/typewriter` turns it off and on
 
+## tern-panels
+
+An MCP server that opens Tern native panels from Claude Code running in a Tern pane: a markdown viewer drawn in the GUI sans font through `tern-sdk` (it live-reloads the file), a webview, and Mermaid diagrams. Tools: `render_markdown_panel`, `open_webview_panel`, `render_mermaid_diagram`, `close_tern_panels`. It needs [uv](https://docs.astral.sh/uv/). Details are in [tern-panels/README.md](tern-panels/README.md).
+
 ## Install
 
 At the prompt of a terminal session:
@@ -40,6 +44,7 @@ At the prompt of a terminal session:
 /plugin install flex-status --marketplace R00neyj/claude-mods
 /plugin install tidy-tools --marketplace R00neyj/claude-mods
 /plugin install typewriter --marketplace R00neyj/claude-mods
+/plugin install tern-panels --marketplace R00neyj/claude-mods
 ```
 
 Answer `y` to add the marketplace, then pick the user scope.
@@ -50,6 +55,7 @@ From a shell:
 claude plugin install flex-status --marketplace R00neyj/claude-mods
 claude plugin install tidy-tools --marketplace R00neyj/claude-mods
 claude plugin install typewriter --marketplace R00neyj/claude-mods
+claude plugin install tern-panels --marketplace R00neyj/claude-mods
 ```
 
 In the desktop app, where `/plugin` does not run: click + next to the prompt box, then Plugins, Add marketplace with `R00neyj/claude-mods`, then Add plugin.
