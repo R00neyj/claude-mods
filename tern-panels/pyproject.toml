@@ -1,6 +1,6 @@
 [project]
 name = "tern-panels"
-version = "0.1.0"
+version = "0.2.0"
 description = "Tern native panels (markdown, webview, mermaid) as MCP tools"
 readme = "README.md"
 requires-python = ">=3.11"

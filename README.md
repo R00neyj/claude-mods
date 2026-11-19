@@ -34,7 +34,7 @@ The terminal draws a streamed reply in batches of whole lines, so text lands in 
 
 ## tern-panels
 
-An MCP server that opens Tern native panels from Claude Code running in a Tern pane: a markdown viewer drawn in the GUI sans font through `tern-sdk` (it live-reloads the file), a webview, and Mermaid diagrams. Tools: `render_markdown_panel`, `open_webview_panel`, `render_mermaid_diagram`, `close_tern_panels`. It needs [uv](https://docs.astral.sh/uv/). Details are in [tern-panels/README.md](tern-panels/README.md).
+An MCP server that opens Tern native panels from Claude Code running in a Tern pane: a markdown viewer drawn in the GUI sans font through `tern-sdk` (it live-reloads the file and types appended text out smoothly), Mermaid diagrams through Tern's built-in engine, and a webview. Tools: `render_markdown_panel`, `render_mermaid_diagram`, `open_webview_panel`, `close_tern_panels`. It needs [uv](https://docs.astral.sh/uv/). Details are in [tern-panels/README.md](tern-panels/README.md).
 
 ## Install
 
